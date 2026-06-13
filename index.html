@@ -522,9 +522,13 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 async function uploadFile(file, prefix, playerName) {
     if (!file) return '';
     const ext = file.name.split('.').pop();
-    const clean = playerName.replace(/\s+/g, '_');
-    const fileName = `${prefix}_${clean}_${Date.now()}.${ext}`;
-
+    const clean = playerName
+    .replace(/[^\u0000-\u007F]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '');
+const safeName = clean || 'player';
+const fileName = `${prefix}_${safeName}_${Date.now()}.${ext}`;
+    
     const { error } = await db.storage.from('player-documents').upload(fileName, file, { cacheControl: '3600', upsert: true });
     if (error) { console.error('خطأ رفع:', error.message); return ''; }
 
