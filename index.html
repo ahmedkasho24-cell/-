@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-    <!-- ✅ FIX: استخدام الـ CDN الصح لـ Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
     <style>
@@ -178,6 +177,10 @@
                     <input type="text" id="fullName" required placeholder="أدخل اسم اللاعب رباعياً">
                 </div>
                 <div class="form-group">
+                    <label>الرقم القومي للاعب *</label>
+                    <input type="text" id="nationalId" required maxlength="14" pattern="\d{14}" inputmode="numeric" placeholder="14 رقم">
+                </div>
+                <div class="form-group">
                     <label>تاريخ الميلاد *</label>
                     <input type="date" id="birthDate" required>
                 </div>
@@ -277,7 +280,6 @@
                 <button type="submit" class="btn" id="submit-form-btn">
                     <i class="fa-solid fa-cloud-arrow-up"></i> إتمام التسجيل والحفظ
                 </button>
-                <!-- ✅ FIX: زرار الأدمن يشتغل صح -->
                 <button type="button" class="btn btn-dark" id="go-to-login-btn">
                     <i class="fa-solid fa-lock"></i> التسجيل كإداري
                 </button>
@@ -391,6 +393,7 @@
                     <tr>
                         <th>#</th>
                         <th>الاسم رباعي</th>
+                        <th>الرقم القومي</th>
                         <th>الفئة</th>
                         <th>درجة الحزام</th>
                         <th>الوزن</th>
@@ -402,7 +405,7 @@
                     </tr>
                 </thead>
                 <tbody id="players-table-body">
-                    <tr><td colspan="10" style="text-align:center;padding:2rem;color:#999">جاري تحميل البيانات...</td></tr>
+                    <tr><td colspan="11" style="text-align:center;padding:2rem;color:#999">جاري تحميل البيانات...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -442,17 +445,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// =====================================================
-// ✅ FIX 1: تغيير اسم المتغير من supabase إلى db
-//    لأن اسم supabase محجوز من الـ library نفسها
-// =====================================================
 const SUPABASE_URL = 'https://rosdhmnanwinpigbgshz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvc2RobW5hbndpbnBpZ2Jnc2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDUzMjUsImV4cCI6MjA5NjkyMTMyNX0.J8LXVbNVnrvpQmaXPvOT9QPcRdm_cl4ffYXE8dNwl1E';
 
-// ✅ FIX: استخدام window.supabase من الـ UMD bundle
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// =====================================================
 let players = [];
 let currentEditId = null;
 
@@ -463,9 +460,6 @@ const adminPage  = document.getElementById('admin-page');
 const modal      = document.getElementById('player-modal');
 const editBanner = document.getElementById('edit-banner');
 
-// =====================================================
-// ✅ FIX 2: زرار "التسجيل كإداري" يشتغل صح
-// =====================================================
 document.getElementById('go-to-login-btn').addEventListener('click', () => {
     regPage.classList.add('hidden');
     loginPage.classList.remove('hidden');
@@ -484,7 +478,6 @@ document.getElementById('back-to-reg-btn').addEventListener('click', () => {
 document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 
-// زرار الرجوع من لوحة الأدمن لتسجيل لاعب جديد
 document.getElementById('back-to-form-btn').addEventListener('click', () => {
     adminPage.classList.add('hidden');
     regPage.classList.remove('hidden');
@@ -492,7 +485,6 @@ document.getElementById('back-to-form-btn').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-// تسجيل دخول الأدمن
 document.getElementById('login-submit-btn').addEventListener('click', () => {
     const user = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value.trim();
@@ -523,12 +515,12 @@ async function uploadFile(file, prefix, playerName) {
     if (!file) return '';
     const ext = file.name.split('.').pop();
     const clean = playerName
-    .replace(/[^\u0000-\u007F]/g, '')
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_]/g, '');
-const safeName = clean || 'player';
-const fileName = `${prefix}_${safeName}_${Date.now()}.${ext}`;
-    
+        .replace(/[^\u0000-\u007F]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_]/g, '');
+    const safeName = clean || 'player';
+    const fileName = `${prefix}_${safeName}_${Date.now()}.${ext}`;
+
     const { error } = await db.storage.from('player-documents').upload(fileName, file, { cacheControl: '3600', upsert: true });
     if (error) { console.error('خطأ رفع:', error.message); return ''; }
 
@@ -557,6 +549,7 @@ document.getElementById('player-form').addEventListener('submit', async function
 
         const playerData = {
             full_name:       fullName,
+            national_id:     document.getElementById('nationalId').value.trim(),
             birth_date:      document.getElementById('birthDate').value,
             address:         document.getElementById('address').value,
             primary_phone:   document.getElementById('primaryPhone').value,
@@ -572,7 +565,6 @@ document.getElementById('player-form').addEventListener('submit', async function
             achievements:    document.getElementById('achievements').value,
         };
 
-        // إضافة الصور فقط لو اتبعتلنا ملف جديد
         if (photoUrl) playerData.photo_url = photoUrl;
         if (certUrl)  playerData.cert_url  = certUrl;
 
@@ -622,7 +614,7 @@ function renderTable() {
     const beltVal  = document.getElementById('filter-belt').value;
 
     const filtered = players.filter(p => {
-        return (!search   || p.full_name.toLowerCase().includes(search) || p.primary_phone.includes(search))
+        return (!search   || p.full_name.toLowerCase().includes(search) || p.primary_phone.includes(search) || (p.national_id && p.national_id.includes(search)))
             && (!medVal   || p.medical_status === medVal)
             && (!catVal   || p.category === catVal)
             && (!beltVal  || p.belt_degree.includes(beltVal));
@@ -634,7 +626,7 @@ function renderTable() {
     document.getElementById('count-pending').textContent = filtered.length - done;
 
     if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:#999"><i class="fa-solid fa-magnifying-glass" style="font-size:1.5rem;display:block;margin-bottom:.5rem"></i> لا توجد نتائج</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2.5rem;color:#999"><i class="fa-solid fa-magnifying-glass" style="font-size:1.5rem;display:block;margin-bottom:.5rem"></i> لا توجد نتائج</td></tr>';
         return;
     }
 
@@ -642,6 +634,7 @@ function renderTable() {
         <tr onclick="showPlayerDetails(${p.id})">
             <td><strong>${i + 1}</strong></td>
             <td><strong>${p.full_name}</strong></td>
+            <td>${p.national_id || '—'}</td>
             <td>${p.category}</td>
             <td><span style="background:#e9ecef;padding:2px 8px;border-radius:4px;font-size:12px">${p.belt_degree}</span></td>
             <td>${p.weight} كجم</td>
@@ -663,7 +656,6 @@ function renderTable() {
     `).join('');
 }
 
-// Listeners فلاتر
 ['search-input','filter-medical','filter-category','filter-belt'].forEach(id => {
     document.getElementById(id).addEventListener(id === 'search-input' ? 'input' : 'change', renderTable);
 });
@@ -678,6 +670,7 @@ window.showPlayerDetails = function(id) {
     document.getElementById('modal-player-name').textContent = `ملف كارت البطل: ${p.full_name}`;
 
     document.getElementById('modal-details-grid').innerHTML = [
+        ['الرقم القومي', p.national_id || 'غير مسجل'],
         ['تاريخ الميلاد', p.birth_date],
         ['العنوان', p.address],
         ['التليفون الأساسي', p.primary_phone],
@@ -693,7 +686,6 @@ window.showPlayerDetails = function(id) {
     ].map(([k,v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('')
      + `<div class="full-width"><strong>الإنجازات:</strong> ${p.achievements || 'لا توجد إنجازات مسجلة'}</div>`;
 
-    // صور
     const photoImg = document.getElementById('modal-photo-img');
     const certImg  = document.getElementById('modal-cert-img');
     photoImg.src = p.photo_url || ''; photoImg.classList.add('hidden');
@@ -733,6 +725,7 @@ window.editPlayer = function(id) {
 
     currentEditId = p.id;
     document.getElementById('fullName').value       = p.full_name;
+    document.getElementById('nationalId').value     = p.national_id || '';
     document.getElementById('birthDate').value      = p.birth_date;
     document.getElementById('address').value        = p.address;
     document.getElementById('primaryPhone').value   = p.primary_phone;
@@ -765,9 +758,9 @@ function cancelEdit() {
 // تصدير CSV
 // =====================================================
 document.getElementById('export-csv').addEventListener('click', () => {
-    const headers = ['#','الاسم','الميلاد','العنوان','التليفون','الفئة','الحزام','اللعبة','الوزن','الطول','الكشف','الانضمام'];
+    const headers = ['#','الاسم','الرقم القومي','الميلاد','العنوان','التليفون','الفئة','الحزام','اللعبة','الوزن','الطول','الكشف','الانضمام'];
     const rows = players.map((p, i) => [
-        i+1, p.full_name, p.birth_date, p.address, p.primary_phone,
+        i+1, p.full_name, p.national_id || '', p.birth_date, p.address, p.primary_phone,
         p.category, p.belt_degree, p.game_type, p.weight, p.height,
         p.medical_status, p.join_date
     ]);
@@ -791,9 +784,9 @@ document.getElementById('export-pdf').addEventListener('click', () => {
 
     doc.autoTable({
         startY: 28,
-        head: [['#','Name','Category','Belt','Weight','Height','Medical','Phone','Join Date']],
+        head: [['#','Name','National ID','Category','Belt','Weight','Height','Medical','Phone','Join Date']],
         body: players.map((p, i) => [
-            i+1, p.full_name, p.category, p.belt_degree,
+            i+1, p.full_name, p.national_id || '', p.category, p.belt_degree,
             p.weight + ' kg', p.height + ' m', p.medical_status,
             p.primary_phone, p.join_date
         ]),
