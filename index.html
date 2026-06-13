@@ -373,7 +373,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn" id="submit-form-btn"><i class="fa-solid fa-cloud-arrow-up"></i> إتمام التسجيل والحفظ</button>
-                    <button type="button" class="btn btn-secondary" id="go-to-login-btn"><i class="fa-solid fa-lock"></i> التسجيل كأداري</button>
+                    <button type="button" class="btn btn-secondary" id="go-to-login-btn"><i class="fa-solid fa-lock"></i> التسجيل كإداري</button>
                 </div>
             </form>
         </section>
@@ -456,11 +456,11 @@
                             <th>الطول</th>
                             <th>الكشف الطبي</th>
                             <th>تليفون أساسي</th>
-                            <th>إجراءات</th>
+                            <th>ملف الكارت</th> <th>إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="players-table-body">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </section>
@@ -489,11 +489,10 @@
     </div>
 
     <script>
-        // دمج بياناتك السرية من سوبابيز هنا ليعمل الاتصال فوراً
         const SUPABASE_URL = 'https://rosdhmnanwinpigbgshz.supabase.co'; 
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvc2RobW5hbndpbnBpZ2Jnc2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDUzMjUsImV4cCI6MjA5NjkyMTMyNX0.J8LXVbNVnrvpQmaXPvOT9QPcRdm_cl4ffYXE8dNwl1E'; 
         
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let players = [];
         let currentEditId = null;
@@ -509,7 +508,7 @@
         document.getElementById('back-to-reg-btn').addEventListener('click', () => { loginPage.classList.add('hidden'); regPage.classList.remove('hidden'); });
         document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
 
-        // تسجيل دخول الأدمن المطابق للشروط
+        // تسجيل دخول الأدمن
         document.getElementById('login-submit-btn').addEventListener('click', () => {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
@@ -524,7 +523,7 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => { adminPage.classList.add('hidden'); regPage.classList.remove('hidden'); });
 
-        // دالة مساعدة لرفع الصور المباشرة إلى سوبابيز ستورج واستخراج روابطها
+        // دالة رفع الصور لستورج سوبابيز
         async function uploadFile(file, prefix, playerName) {
             if (!file) return '';
             const fileExt = file.name.split('.').pop();
@@ -544,7 +543,7 @@
             return publicUrlData.publicUrl;
         }
 
-        // إرسال الاستمارة وحفظها مباشرة في قاعدة البيانات السحابية
+        // إرسال وحفظ البيانات
         playerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const submitBtn = document.getElementById('submit-form-btn');
@@ -602,7 +601,7 @@
             }
         });
 
-        // جلب البيانات الكلية من سوبابيز وعرضها وتصفيتها
+        // جلب البيانات
         async function fetchAndRender() {
             const { data, error } = await supabase.from('players').select('*').order('created_at', { ascending: false });
             if (error) { console.error('خطأ جلب البيانات:', error.message); return; }
@@ -610,6 +609,7 @@
             renderTable();
         }
 
+        // عرض الجدول وتطبيق الفلاتر
         function renderTable() {
             const tbody = document.getElementById('players-table-body');
             tbody.innerHTML = '';
@@ -640,7 +640,7 @@
                     <td style="color: ${p.medical_status === 'تم الكشف' ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight:bold;">${p.medical_status}</td>
                     <td>${p.primary_phone}</td>
                     <td>
-                        <button class="btn actions-cell btn-secondary" style="padding: 4px 8px;" onclick="event.stopPropagation(); showPlayerDetails(${p.id})"><i class="fa-solid fa-folder-open"></i> فتح الكارت</button>
+                        <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="event.stopPropagation(); showPlayerDetails(${p.id})"><i class="fa-solid fa-folder-open"></i> فتح الكارت</button>
                     </td>
                     <td class="actions-cell">
                         <button class="btn btn-secondary" onclick="event.stopPropagation(); editPlayer(${p.id})"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -652,13 +652,13 @@
             });
         }
 
-        // فلاتر البحث والفرز الفورية عند الكتابة أو التعديل
+        // مستمعي الأحداث للفلاتر
         document.getElementById('search-input').addEventListener('input', renderTable);
         document.getElementById('filter-medical').addEventListener('change', renderTable);
         document.getElementById('filter-category').addEventListener('change', renderTable);
         document.getElementById('filter-belt').addEventListener('change', renderTable);
 
-        // فتح الكارت الخاص وتفاصيل اللاعب وعرض الأوراق
+        // فتح نافذة تفاصيل اللاعب
         window.showPlayerDetails = function(id) {
             const p = players.find(player => player.id === id);
             if (!p) return;
@@ -688,7 +688,7 @@
             modal.classList.remove('hidden');
         };
 
-        // حذف اللاعب نهائياً من السيرفر وقاعدة البيانات سوبابيز
+        // حذف اللاعب
         window.deletePlayer = async function(id) {
             if (confirm('هل أنت متأكد تماماً من رغبتك في حذف هذا اللاعب نهائياً من قاعدة البيانات السحابية؟')) {
                 const { error } = await supabase.from('players').delete().eq('id', id);
@@ -697,7 +697,7 @@
             }
         };
 
-        // سحب البيانات من السيرفر للفورم للتعديل
+        // تعديل بيانات اللاعب (تم استكمال الدالة وإغلاقها بشكل صحيح)
         window.editPlayer = function(id) {
             const p = players.find(player => player.id === id);
             if (!p) return;
@@ -717,49 +717,13 @@
             document.getElementById('gameType').value = p.game_type;
             document.getElementById('category').value = p.category;
             document.getElementById('achievements').value = p.achievements || '';
-
+            
+            // العودة لصفحة التسجيل لتعديل البيانات وإظهار التنبيه للمستخدم
             adminPage.classList.add('hidden');
             regPage.classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            alert('تم سحب بيانات اللاعب للفورم بنجاح، قم بالتعديل ثم اضغط على زر الحفظ السحابي.');
         };
-
-        // ================= أدوات التقارير والتصدير الشاملة =================
-        
-        // تصدير كملف CSV سحابي فوري ومباشر
-        document.getElementById('export-csv').addEventListener('click', () => {
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "الاسم رباعي,الفئة,درجة الحزام,الوزن الحالي,الطول,الكشف الطبي,رقم الهاتف\n";
-            players.forEach(p => {
-                csvContent += `"${p.full_name}","${p.category}","${p.belt_degree}","${p.weight}","${p.height}","${p.medical_status}","${p.primary_phone}"\n`;
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "كشف_لاعبي_نادي_التجمع_الاول.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-
-        // تصدير تقرير PDF احترافي ومنسق ومريح للعين
-        document.getElementById('export-pdf').addEventListener('click', () => {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: "landscape" });
-            doc.text("كشف لاعبي نادي التجمع الأول للتايكوندو المعتمد", 15, 15);
-            
-            const tableRows = [];
-            players.forEach(p => {
-                tableRows.push([p.full_name, p.category, p.belt_degree, p.weight, p.height, p.medical_status, p.primary_phone]);
-            });
-
-            doc.autoTable({
-                head: [['الاسم رباعي', 'الفئة', 'الحزام', 'الوزن', 'الطول', 'الكشف الطبي', 'رقم الهاتف']],
-                body: tableRows,
-                startY: 25,
-                styles: { halign: "right" }
-            });
-            doc.save("تقرير_عام_اللاعبين.pdf");
-        });
     </script>
 </body>
 </html>
