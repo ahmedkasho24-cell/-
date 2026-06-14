@@ -31,10 +31,19 @@
 
         header {
             text-align: center; margin-bottom: 30px; padding: 20px;
-            background: var(--bg-card); border-radius: 10px;
+            background: #000000; border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: relative;
         }
-        header h1 { color: var(--primary-blue); font-weight: 700; }
+        header h1 { color: #ffffff; font-weight: 700; margin-top: 10px; }
+        header p { color: #cccccc; }
+        header img.club-logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            height: 45px;
+            object-fit: contain;
+        }
 
         .card {
             background: var(--bg-card); padding: 30px; border-radius: 12px;
@@ -157,7 +166,8 @@
 <div class="container">
 
     <header>
-        <h1><i class="fa-solid fa-person-running"></i> مركز التنمية الشبابية بالتجمع الأول </h1>
+        <img src="logo.png" alt="شعار النادي" class="club-logo">
+        <h1><i class="fa-solid fa-person-running"></i> نادي التجمع الأول للتايكوندو</h1>
         <p>بوابة تسجيل اللاعبين والإدارة الذكية</p>
     </header>
 
