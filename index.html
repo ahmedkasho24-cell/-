@@ -80,6 +80,8 @@
         .btn-secondary:hover { background-color: #5a6268; }
         .btn-dark { background-color: #1a1a1a; }
         .btn-dark:hover { background-color: #333; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-warning:hover { background-color: #e0a800; }
 
         .form-actions { margin-top: 20px; display: flex; gap: 15px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 
@@ -290,9 +292,14 @@
                 <button type="submit" class="btn" id="submit-form-btn">
                     <i class="fa-solid fa-cloud-arrow-up"></i> إتمام التسجيل والحفظ
                 </button>
-                <button type="button" class="btn btn-dark" id="go-to-login-btn">
-                    <i class="fa-solid fa-lock"></i> التسجيل كإداري
-                </button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-warning" id="update-weight-btn">
+                        <i class="fa-solid fa-weight-scale"></i> تحديث الميزان
+                    </button>
+                    <button type="button" class="btn btn-dark" id="go-to-login-btn">
+                        <i class="fa-solid fa-lock"></i> التسجيل كإداري
+                    </button>
+                </div>
             </div>
         </form>
     </section>
@@ -423,7 +430,7 @@
 
 </div>
 
-<!-- Modal تفاصيل اللاعب -->
+<!-- Modal تفاصيل اللاعب للأدمن -->
 <div id="player-modal" class="modal hidden">
     <div class="modal-content">
         <button class="close-modal" id="close-modal-btn">&times;</button>
@@ -451,6 +458,45 @@
     </div>
 </div>
 
+<!-- Modal تحديث الميزان للاعبين -->
+<div id="weight-update-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 450px;">
+        <button class="close-modal" id="close-weight-modal-btn">&times;</button>
+        <h2><i class="fa-solid fa-weight-scale"></i> تحديث ميزان كابتن</h2>
+        
+        <!-- الخطوة الأولى: البحث برقم التليفون -->
+        <div id="weight-step-search">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>رقم الهاتف المسجل به اللاعب *</label>
+                <input type="tel" id="weight-search-phone" required placeholder="أدخل الرقم الأساسي أو الإضافي">
+            </div>
+            <button class="btn" id="weight-search-btn" style="width: 100%;">
+                <i class="fa-solid fa-magnifying-glass"></i> تحقق من الرقم واللاعب
+            </button>
+        </div>
+
+        <!-- الخطوة الثانية: تعديل الوزن (تظهر فقط عند العثور على اللاعب) -->
+        <div id="weight-step-edit" class="hidden">
+            <div style="background: #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="font-weight: bold; font-size: 14px; color: var(--primary-blue);">
+                    اللاعب: <span id="weight-edit-player-name">---</span>
+                </p>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>الميزان الحالي (كجم) *</label>
+                <input type="number" step="0.1" id="weight-edit-input" required placeholder="الوزن الجديد">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>الطول الحالي (م) *</label>
+                <input type="number" step="0.01" id="height-edit-input" min="0.5" max="2.00" required placeholder="الطول الجديد">
+            </div>
+            <button class="btn" id="weight-save-btn" style="width: 100%;">
+                <i class="fa-solid fa-circle-check"></i> حفظ الميزان الجديد
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -462,6 +508,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let players = [];
 let currentEditId = null;
+let currentWeightPlayer = null; // لتخزين اللاعب الذي يتم تحديث وزنه حالياً
 
 // Elements
 const regPage    = document.getElementById('registration-page');
@@ -469,6 +516,11 @@ const loginPage  = document.getElementById('login-page');
 const adminPage  = document.getElementById('admin-page');
 const modal      = document.getElementById('player-modal');
 const editBanner = document.getElementById('edit-banner');
+
+// Weight Modal Elements
+const weightModal = document.getElementById('weight-update-modal');
+const weightStepSearch = document.getElementById('weight-step-search');
+const weightStepEdit = document.getElementById('weight-step-edit');
 
 document.getElementById('go-to-login-btn').addEventListener('click', () => {
     regPage.classList.add('hidden');
@@ -519,6 +571,107 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 });
 
 // =====================================================
+// تحديث الميزان للاعبين (نافذة التحقق والتحكم)
+// =====================================================
+document.getElementById('update-weight-btn').addEventListener('click', () => {
+    weightModal.classList.remove('hidden');
+    weightStepSearch.classList.remove('hidden');
+    weightStepEdit.classList.add('hidden');
+    document.getElementById('weight-search-phone').value = '';
+    currentWeightPlayer = null;
+});
+
+document.getElementById('close-weight-modal-btn').addEventListener('click', () => weightModal.classList.add('hidden'));
+weightModal.addEventListener('click', e => { if (e.target === weightModal) weightModal.classList.add('hidden'); });
+
+// البحث عن اللاعب برقم الهاتف
+document.getElementById('weight-search-btn').addEventListener('click', async () => {
+    const phoneInput = document.getElementById('weight-search-phone').value.trim();
+    const searchBtn = document.getElementById('weight-search-btn');
+
+    if (!phoneInput) {
+        showToast('⚠️ يرجى إدخال رقم الهاتف أولاً', 'error');
+        return;
+    }
+
+    searchBtn.disabled = true;
+    searchBtn.innerHTML = '<span class="spinner"></span> جاري التحقق...';
+
+    try {
+        // البحث عن اللاعب بالهاتف الأساسي أو الإضافي
+        const { data, error } = await db
+            .from('players')
+            .select('*')
+            .or(`primary_phone.eq.${phoneInput},secondary_phone.eq.${phoneInput}`);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // وجدنا اللاعب
+            currentWeightPlayer = data[0];
+            
+            // تهيئة الخانات بالقيم الحالية للاعب
+            document.getElementById('weight-edit-player-name').textContent = currentWeightPlayer.full_name;
+            document.getElementById('weight-edit-input').value = currentWeightPlayer.weight;
+            document.getElementById('height-edit-input').value = currentWeightPlayer.height;
+
+            // التحول إلى خانة التعديل
+            weightStepSearch.classList.add('hidden');
+            weightStepEdit.classList.remove('hidden');
+            showToast('✅ تم العثور على كابتن بنجاح', 'success');
+        } else {
+            showToast('❌ عذراً، لم نجد أي لاعب مسجل بهذا الرقم', 'error');
+        }
+    } catch (err) {
+        showToast('❌ حدث خطأ أثناء البحث: ' + err.message, 'error');
+        console.error(err);
+    } finally {
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> تحقق من الرقم واللاعب';
+    }
+});
+
+// حفظ الميزان الجديد في قاعدة البيانات
+document.getElementById('weight-save-btn').addEventListener('click', async () => {
+    if (!currentWeightPlayer) return;
+
+    const newWeight = parseFloat(document.getElementById('weight-edit-input').value);
+    const newHeight = parseFloat(document.getElementById('height-edit-input').value);
+    const saveBtn = document.getElementById('weight-save-btn');
+
+    if (isNaN(newWeight) || isNaN(newHeight)) {
+        showToast('⚠️ يرجى إدخال قيم صحيحة للوزن والطول', 'error');
+        return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span> جاري حفظ الميزان الجديد...';
+
+    try {
+        const { error } = await db
+            .from('players')
+            .update({ weight: newWeight, height: newHeight })
+            .eq('id', currentWeightPlayer.id);
+
+        if (error) throw error;
+
+        showToast('🎉 تم تحديث الميزان والطول للكابتن بنجاح!', 'success');
+        weightModal.classList.add('hidden');
+        
+        // إذا كان الأدمن فاتح اللوحة، نقوم بتحديث البيانات المعروضة في الخلفية
+        if (!adminPage.classList.contains('hidden')) {
+            fetchAndRender();
+        }
+    } catch (err) {
+        showToast('❌ حدث خطأ أثناء الحفظ: ' + err.message, 'error');
+        console.error(err);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> حفظ الميزان الجديد';
+    }
+});
+
+// =====================================================
 // رفع الصور
 // =====================================================
 async function uploadFile(file, prefix, playerName) {
@@ -547,7 +700,7 @@ document.getElementById('player-form').addEventListener('submit', async function
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> جاري الحفظ...';
 
-    const fullName  = document.getElementById('fullName').value.trim();
+    const fullName   = document.getElementById('fullName').value.trim();
     const photoFile = document.getElementById('personalPhoto').files[0];
     const certFile  = document.getElementById('birthCertificate').files[0];
 
@@ -559,7 +712,7 @@ document.getElementById('player-form').addEventListener('submit', async function
 
         const playerData = {
             full_name:       fullName,
-            national_id:     document.getElementById('nationalId').value.trim(),
+            national_id:      document.getElementById('nationalId').value.trim(),
             birth_date:      document.getElementById('birthDate').value,
             address:         document.getElementById('address').value,
             primary_phone:   document.getElementById('primaryPhone').value,
@@ -671,151 +824,23 @@ function renderTable() {
 });
 
 // =====================================================
-// تفاصيل اللاعب
+// توست التنبيهات (Toast)
 // =====================================================
-window.showPlayerDetails = function(id) {
-    const p = players.find(x => x.id === id);
-    if (!p) return;
-
-    document.getElementById('modal-player-name').textContent = `ملف كارت البطل: ${p.full_name}`;
-
-    document.getElementById('modal-details-grid').innerHTML = [
-        ['الرقم القومي', p.national_id || 'غير مسجل'],
-        ['تاريخ الميلاد', p.birth_date],
-        ['العنوان', p.address],
-        ['التليفون الأساسي', p.primary_phone],
-        ['التليفون الإضافي', p.secondary_phone || 'لا يوجد'],
-        ['مجال ولي الأمر', p.parent_job || 'غير مسجل'],
-        ['تاريخ الانضمام', p.join_date],
-        ['اللعبة', p.game_type],
-        ['الفئة', p.category],
-        ['الحزام', p.belt_degree],
-        ['الوزن', p.weight + ' كجم'],
-        ['الطول', p.height + ' م'],
-        ['الكشف الطبي', p.medical_status],
-    ].map(([k,v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('')
-     + `<div class="full-width"><strong>الإنجازات:</strong> ${p.achievements || 'لا توجد إنجازات مسجلة'}</div>`;
-
-    const photoImg = document.getElementById('modal-photo-img');
-    const certImg  = document.getElementById('modal-cert-img');
-    photoImg.src = p.photo_url || ''; photoImg.classList.add('hidden');
-    certImg.src  = p.cert_url  || ''; certImg.classList.add('hidden');
-    document.getElementById('no-photo-msg').textContent = p.photo_url ? '' : 'لم تُرفع صورة شخصية';
-    document.getElementById('no-cert-msg').textContent  = p.cert_url  ? '' : 'لم تُرفع شهادة ميلاد';
-
-    document.getElementById('btn-view-photo').onclick = () => {
-        if (p.photo_url) photoImg.classList.toggle('hidden');
-        else showToast('لم يُرفع صورة شخصية لهذا اللاعب', 'error');
-    };
-    document.getElementById('btn-view-cert').onclick = () => {
-        if (p.cert_url) certImg.classList.toggle('hidden');
-        else showToast('لم تُرفع شهادة ميلاد لهذا اللاعب', 'error');
-    };
-
-    modal.classList.remove('hidden');
-};
-
-// =====================================================
-// حذف
-// =====================================================
-window.deletePlayer = async function(id) {
-    const p = players.find(x => x.id === id);
-    if (!confirm(`هل أنت متأكد من حذف اللاعب "${p?.full_name}" نهائياً؟`)) return;
-    const { error } = await db.from('players').delete().eq('id', id);
-    if (error) showToast('❌ فشل الحذف: ' + error.message, 'error');
-    else { showToast('🗑️ تم حذف اللاعب بنجاح', 'success'); fetchAndRender(); }
-};
-
-// =====================================================
-// تعديل
-// =====================================================
-window.editPlayer = function(id) {
-    const p = players.find(x => x.id === id);
-    if (!p) return;
-
-    currentEditId = p.id;
-    document.getElementById('fullName').value       = p.full_name;
-    document.getElementById('nationalId').value     = p.national_id || '';
-    document.getElementById('birthDate').value      = p.birth_date;
-    document.getElementById('address').value        = p.address;
-    document.getElementById('primaryPhone').value   = p.primary_phone;
-    document.getElementById('secondaryPhone').value = p.secondary_phone || '';
-    document.getElementById('medicalStatus').value  = p.medical_status;
-    document.getElementById('weight').value         = p.weight;
-    document.getElementById('height').value         = p.height;
-    document.getElementById('beltDegree').value     = p.belt_degree;
-    document.getElementById('parentJob').value      = p.parent_job || '';
-    document.getElementById('joinDate').value       = p.join_date;
-    document.getElementById('gameType').value       = p.game_type;
-    document.getElementById('category').value       = p.category;
-    document.getElementById('achievements').value   = p.achievements || '';
-
-    adminPage.classList.add('hidden');
-    regPage.classList.remove('hidden');
-    editBanner.classList.remove('hidden');
-    document.getElementById('submit-form-btn').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-function cancelEdit() {
-    currentEditId = null;
-    editBanner.classList.add('hidden');
-    document.getElementById('submit-form-btn').innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> إتمام التسجيل والحفظ';
-    document.getElementById('player-form').reset();
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.className = `toast show ${type}`;
+    toast.innerHTML = msg;
+    setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
 // =====================================================
-// تصدير CSV
+// إلغاء التعديل
 // =====================================================
-document.getElementById('export-csv').addEventListener('click', () => {
-    const headers = ['#','الاسم','الرقم القومي','الميلاد','العنوان','التليفون','الفئة','الحزام','اللعبة','الوزن','الطول','الكشف','الانضمام'];
-    const rows = players.map((p, i) => [
-        i+1, p.full_name, p.national_id || '', p.birth_date, p.address, p.primary_phone,
-        p.category, p.belt_degree, p.game_type, p.weight, p.height,
-        p.medical_status, p.join_date
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'لاعبو_التايكوندو.csv'; a.click();
-    showToast('✅ تم تصدير CSV', 'success');
-});
-
-// =====================================================
-// تصدير PDF
-// =====================================================
-document.getElementById('export-pdf').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    doc.setFont('helvetica'); doc.setFontSize(14);
-    doc.text('Al-Tajammo Al-Awwal Taekwondo Club - Players List', 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Date: ${new Date().toLocaleDateString('ar-EG')} | Total: ${players.length}`, 14, 22);
-
-    doc.autoTable({
-        startY: 28,
-        head: [['#','Name','National ID','Category','Belt','Weight','Height','Medical','Phone','Join Date']],
-        body: players.map((p, i) => [
-            i+1, p.full_name, p.national_id || '', p.category, p.belt_degree,
-            p.weight + ' kg', p.height + ' m', p.medical_status,
-            p.primary_phone, p.join_date
-        ]),
-        styles: { fontSize: 9, halign: 'center' },
-        headStyles: { fillColor: [26, 26, 26] },
-        alternateRowStyles: { fillColor: [241, 247, 255] }
-    });
-    doc.save('taekwondo_players.pdf');
-    showToast('✅ تم تصدير PDF', 'success');
-});
-
-// =====================================================
-// Toast
-// =====================================================
-function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast ' + type + ' show';
-    setTimeout(() => t.classList.remove('show'), 3500);
+function cancelEdit() {
+    currentEditId = null;
+    editBanner.classList.add('hidden');
+    document.getElementById('player-form').reset();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 </body>
