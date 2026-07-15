@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -462,7 +463,7 @@
 <div id="weight-update-modal" class="modal hidden">
     <div class="modal-content" style="max-width: 450px;">
         <button class="close-modal" id="close-weight-modal-btn">&times;</button>
-        <h2><i class="fa-solid fa-weight-scale"></i> تحديث الميزان </h2>
+        <h2><i class="fa-solid fa-weight-scale"></i> تحديث ميزان كابتن</h2>
         
         <!-- الخطوة الأولى: البحث برقم التليفون -->
         <div id="weight-step-search">
@@ -475,7 +476,7 @@
             </button>
         </div>
 
-        <!-- الخطوة الثانية: تعديل الوزن (تظهر فقط عند العثور على اللاعب) -->
+        <!-- الخطوة الثانية: تعديل الوزن -->
         <div id="weight-step-edit" class="hidden">
             <div style="background: #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px;">
                 <p style="font-weight: bold; font-size: 14px; color: var(--primary-blue);">
@@ -508,7 +509,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let players = [];
 let currentEditId = null;
-let currentWeightPlayer = null; // لتخزين اللاعب الذي يتم تحديث وزنه حالياً
+let currentWeightPlayer = null;
 
 // Elements
 const regPage    = document.getElementById('registration-page');
@@ -584,7 +585,6 @@ document.getElementById('update-weight-btn').addEventListener('click', () => {
 document.getElementById('close-weight-modal-btn').addEventListener('click', () => weightModal.classList.add('hidden'));
 weightModal.addEventListener('click', e => { if (e.target === weightModal) weightModal.classList.add('hidden'); });
 
-// البحث عن اللاعب برقم الهاتف
 document.getElementById('weight-search-btn').addEventListener('click', async () => {
     const phoneInput = document.getElementById('weight-search-phone').value.trim();
     const searchBtn = document.getElementById('weight-search-btn');
@@ -598,7 +598,6 @@ document.getElementById('weight-search-btn').addEventListener('click', async () 
     searchBtn.innerHTML = '<span class="spinner"></span> جاري التحقق...';
 
     try {
-        // البحث عن اللاعب بالهاتف الأساسي أو الإضافي
         const { data, error } = await db
             .from('players')
             .select('*')
@@ -607,15 +606,11 @@ document.getElementById('weight-search-btn').addEventListener('click', async () 
         if (error) throw error;
 
         if (data && data.length > 0) {
-            // وجدنا اللاعب
             currentWeightPlayer = data[0];
-            
-            // تهيئة الخانات بالقيم الحالية للاعب
             document.getElementById('weight-edit-player-name').textContent = currentWeightPlayer.full_name;
             document.getElementById('weight-edit-input').value = currentWeightPlayer.weight;
             document.getElementById('height-edit-input').value = currentWeightPlayer.height;
 
-            // التحول إلى خانة التعديل
             weightStepSearch.classList.add('hidden');
             weightStepEdit.classList.remove('hidden');
             showToast('✅ تم العثور على كابتن بنجاح', 'success');
@@ -624,14 +619,12 @@ document.getElementById('weight-search-btn').addEventListener('click', async () 
         }
     } catch (err) {
         showToast('❌ حدث خطأ أثناء البحث: ' + err.message, 'error');
-        console.error(err);
     } finally {
         searchBtn.disabled = false;
         searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> تحقق من الرقم واللاعب';
     }
 });
 
-// حفظ الميزان الجديد في قاعدة البيانات
 document.getElementById('weight-save-btn').addEventListener('click', async () => {
     if (!currentWeightPlayer) return;
 
@@ -645,7 +638,7 @@ document.getElementById('weight-save-btn').addEventListener('click', async () =>
     }
 
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner"></span> جاري حفظ الميزان الجديد...';
+    saveBtn.innerHTML = '<span class="spinner"></span> جاري الحفظ...';
 
     try {
         const { error } = await db
@@ -658,13 +651,11 @@ document.getElementById('weight-save-btn').addEventListener('click', async () =>
         showToast('🎉 تم تحديث الميزان والطول للكابتن بنجاح!', 'success');
         weightModal.classList.add('hidden');
         
-        // إذا كان الأدمن فاتح اللوحة، نقوم بتحديث البيانات المعروضة في الخلفية
         if (!adminPage.classList.contains('hidden')) {
             fetchAndRender();
         }
     } catch (err) {
         showToast('❌ حدث خطأ أثناء الحفظ: ' + err.message, 'error');
-        console.error(err);
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> حفظ الميزان الجديد';
@@ -672,7 +663,7 @@ document.getElementById('weight-save-btn').addEventListener('click', async () =>
 });
 
 // =====================================================
-// رفع الصور
+// رفع الملفات والصور إلى Supabase
 // =====================================================
 async function uploadFile(file, prefix, playerName) {
     if (!file) return '';
@@ -692,7 +683,7 @@ async function uploadFile(file, prefix, playerName) {
 }
 
 // =====================================================
-// إرسال الفورم (تسجيل + تعديل)
+// تسجيل وحفظ لاعب جديد
 // =====================================================
 document.getElementById('player-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -749,7 +740,6 @@ document.getElementById('player-form').addEventListener('submit', async function
 
     } catch (err) {
         showToast('❌ خطأ: ' + err.message, 'error');
-        console.error(err);
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> إتمام التسجيل والحفظ';
@@ -767,7 +757,7 @@ async function fetchAndRender() {
 }
 
 // =====================================================
-// عرض الجدول
+// عرض الجدول وتوزيع الأزرار
 // =====================================================
 function renderTable() {
     const tbody    = document.getElementById('players-table-body');
@@ -794,7 +784,7 @@ function renderTable() {
     }
 
     tbody.innerHTML = filtered.map((p, i) => `
-        <tr onclick="showPlayerDetails(${p.id})">
+        <tr>
             <td><strong>${i + 1}</strong></td>
             <td><strong>${p.full_name}</strong></td>
             <td>${p.national_id || '—'}</td>
@@ -806,25 +796,134 @@ function renderTable() {
                 ${p.medical_status === 'تم الكشف' ? '✅ تم' : '⏳ لم يتم'}
             </td>
             <td>${p.primary_phone}</td>
-            <td onclick="event.stopPropagation()">
+            <td>
                 <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px" onclick="showPlayerDetails(${p.id})">
-                    <i class="fa-solid fa-folder-open"></i> فتح
+                    <i class="fa-solid fa-folder-open"></i> فتح العرض
                 </button>
             </td>
-            <td class="actions-cell" onclick="event.stopPropagation()">
-                <button class="btn btn-secondary" title="تعديل" onclick="editPlayer(${p.id})"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="btn btn-danger" title="حذف" onclick="deletePlayer(${p.id})"><i class="fa-solid fa-trash"></i></button>
+            <td class="actions-cell">
+                <button class="btn btn-secondary" title="تعديل" onclick="editPlayer(${p.id})"><i class="fa-solid fa-pen-to-square"></i> تعديل</button>
+                <button class="btn btn-danger" title="حذف" onclick="deletePlayer(${p.id})"><i class="fa-solid fa-trash"></i> حذف</button>
             </td>
         </tr>
     `).join('');
 }
 
-['search-input','filter-medical','filter-category','filter-belt'].forEach(id => {
-    document.getElementById(id).addEventListener(id === 'search-input' ? 'input' : 'change', renderTable);
-});
+// =====================================================
+// تفعيل أزرار الإجراءات (عرض وتعديل وحذف)
+// =====================================================
+
+// 1. زر العرض (تفاصيل اللاعب والملفات)
+async function showPlayerDetails(id) {
+    const player = players.find(p => p.id === id);
+    if (!player) return;
+
+    document.getElementById('modal-player-name').innerHTML = `<i class="fa-solid fa-user-check"></i> ملف اللاعب: ${player.full_name}`;
+    
+    const grid = document.getElementById('modal-details-grid');
+    grid.innerHTML = `
+        <div class="form-group"><strong>الرقم القومي:</strong> <p>${player.national_id || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>تاريخ الميلاد:</strong> <p>${player.birth_date || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>العنوان:</strong> <p>${player.address || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>الهاتف الأساسي:</strong> <p>${player.primary_phone || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>الهاتف الإضافي:</strong> <p>${player.secondary_phone || 'لا يوجد'}</p></div>
+        <div class="form-group"><strong>الميزان:</strong> <p>${player.weight ? player.weight + ' كجم' : 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>الطول:</strong> <p>${player.height ? player.height + ' م' : 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>الحزام:</strong> <p>${player.belt_degree || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>الكشف الطبي:</strong> <p style="font-weight:bold" class="${player.medical_status === 'تم الكشف' ? 'badge-done' : 'badge-pending'}">${player.medical_status}</p></div>
+        <div class="form-group"><strong>الفئة العمرية:</strong> <p>${player.category || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>نوع اللعبة:</strong> <p>${player.game_type || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>وظيفة ولي الأمر:</strong> <p>${player.parent_job || 'غير مسجل'}</p></div>
+        <div class="form-group"><strong>تاريخ الانضمام:</strong> <p>${player.join_date || 'غير مسجل'}</p></div>
+        <div class="form-group full-width"><strong>الإنجازات والبطولات:</strong> <p style="background:#f1f3f5;padding:8px;border-radius:4px">${player.achievements || 'لا يوجد إنجازات مسجلة بعد.'}</p></div>
+    `;
+
+    // إدارة روابط وعرض الصور المرفوعة
+    const photoImg = document.getElementById('modal-photo-img');
+    const photoMsg = document.getElementById('no-photo-msg');
+    const certImg  = document.getElementById('modal-cert-img');
+    const certMsg  = document.getElementById('no-cert-msg');
+
+    // تصفير وعرض الصور
+    photoImg.classList.add('hidden');
+    certImg.classList.add('hidden');
+
+    if (player.photo_url) {
+        photoImg.src = player.photo_url;
+        photoMsg.textContent = "";
+        document.getElementById('btn-view-photo').onclick = () => photoImg.classList.toggle('hidden');
+    } else {
+        photoMsg.textContent = "لم يتم رفع صورة شخصية";
+        document.getElementById('btn-view-photo').onclick = null;
+    }
+
+    if (player.cert_url) {
+        certImg.src = player.cert_url;
+        certMsg.textContent = "";
+        document.getElementById('btn-view-cert').onclick = () => certImg.classList.toggle('hidden');
+    } else {
+        certMsg.textContent = "لم يتم رفع شهادة ميلاد";
+        document.getElementById('btn-view-cert').onclick = null;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+// 2. زر التعديل (تحميل البيانات للفورم للتعديل)
+function editPlayer(id) {
+    const player = players.find(p => p.id === id);
+    if (!player) return;
+
+    currentEditId = player.id;
+    
+    // تعبئة الفورم الرئيسي بالبيانات الحالية
+    document.getElementById('fullName').value       = player.full_name;
+    document.getElementById('nationalId').value     = player.national_id || '';
+    document.getElementById('birthDate').value      = player.birth_date || '';
+    document.getElementById('address').value        = player.address || '';
+    document.getElementById('primaryPhone').value   = player.primary_phone || '';
+    document.getElementById('secondaryPhone').value = player.secondary_phone || '';
+    document.getElementById('medicalStatus').value  = player.medical_status || 'لم يتم الكشف';
+    document.getElementById('weight').value         = player.weight || '';
+    document.getElementById('height').value         = player.height || '';
+    document.getElementById('beltDegree').value     = player.belt_degree || 'أبيض';
+    document.getElementById('parentJob').value      = player.parent_job || '';
+    document.getElementById('joinDate').value       = player.join_date || '';
+    document.getElementById('gameType').value       = player.game_type || 'بومزا';
+    document.getElementById('category').value        = player.category || 'مدارس';
+    document.getElementById('achievements').value   = player.achievements || '';
+
+    // إظهار بانر التعديل في أعلى الفورم
+    editBanner.classList.remove('hidden');
+
+    // التبديل إلى صفحة الاستمارة
+    adminPage.classList.add('hidden');
+    regPage.classList.remove('hidden');
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('⚙️ تم تعبئة البيانات للفورم للتعديل بنجاح', 'success');
+}
+
+// 3. زر الحذف النهائي من Supabase
+async function deletePlayer(id) {
+    const player = players.find(p => p.id === id);
+    if (!player) return;
+
+    if (confirm(`هل أنت متأكد تمامًا من حذف اللاعب ( ${player.full_name} ) نهائيًا من قاعدة البيانات؟`)) {
+        try {
+            const { error } = await db.from('players').delete().eq('id', id);
+            if (error) throw error;
+
+            showToast('🗑️ تم حذف اللاعب بنجاح!', 'success');
+            fetchAndRender();
+        } catch (err) {
+            showToast('❌ فشل الحذف: ' + err.message, 'error');
+        }
+    }
+}
 
 // =====================================================
-// توست التنبيهات (Toast)
+// توست التنبيهات
 // =====================================================
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
@@ -834,14 +933,24 @@ function showToast(msg, type = 'success') {
 }
 
 // =====================================================
-// إلغاء التعديل
+// إلغاء عملية التعديل
 // =====================================================
 function cancelEdit() {
     currentEditId = null;
     editBanner.classList.add('hidden');
     document.getElementById('player-form').reset();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// تصفية الجداول عند البحث
+['search-input','filter-medical','filter-category','filter-belt'].forEach(id => {
+    document.getElementById(id).addEventListener(id === 'search-input' ? 'input' : 'change', renderTable);
+});
+
+// تعيين الدوال عالمياً ليتمكن الـ HTML من استدعائها مباشرة
+window.showPlayerDetails = showPlayerDetails;
+window.editPlayer = editPlayer;
+window.deletePlayer = deletePlayer;
+window.cancelEdit = cancelEdit;
 </script>
 </body>
 </html>
